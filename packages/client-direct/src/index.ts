@@ -887,10 +887,13 @@ export class DirectClient {
                 // Set appropriate headers for audio streaming
                 res.set({
                     "Content-Type": "audio/mpeg",
-                    "Transfer-Encoding": "chunked",
+                    "Transfer-Encoding": "chunked", // Explicitly use chunked encoding
                 });
 
-                res.send(Buffer.from(audioBuffer));
+                // Stream the audio buffer
+                const audioStream = Buffer.from(audioBuffer);
+                res.write(audioStream); // Write the audio data in chunks
+                res.end(); // End the response
             } catch (error) {
                 elizaLogger.error(
                     "Error processing message or generating speech:",
@@ -963,7 +966,9 @@ export class DirectClient {
                     "Transfer-Encoding": "chunked",
                 });
 
-                res.send(Buffer.from(audioBuffer));
+                const audioStream = Buffer.from(audioBuffer);
+                res.write(audioStream); // Write the audio data in chunks
+                res.end(); // End the response
             } catch (error) {
                 elizaLogger.error(
                     "Error processing message or generating speech:",
