@@ -4,6 +4,8 @@
   "clients": ["twitter"],
   "modelProvider": "eternalai",
   "settings": {
+    "debug": true,
+    "logLevel": "debug",
     "secrets": {},
     "voice": {
       "model": "en_US-hfc_female-medium"

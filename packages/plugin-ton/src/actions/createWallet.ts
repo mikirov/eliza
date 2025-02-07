@@ -4,12 +4,85 @@ import {
     type Memory,
     type State,
     type HandlerCallback,
+    ModelClass,
+    generateObject,
+    Content,
+    composeContext,
 } from "@elizaos/core";
 import { WalletProvider } from "../providers/wallet";
+import { z } from "zod";
+
+export interface CreateWalletContent extends Content {
+    encryptionPassword: string;
+}
+
+function isCreateWalletContent(content: Content): content is CreateWalletContent {
+    return typeof content.encryptionPassword === "string";
+}
+
+// Define a schema for input JSON that must include a password.
+export const passwordSchema = z.object({
+    encryptionPassword: z.string().min(1, "Encryption password is required and cannot be empty."),
+  });
+  
+  // Define a template to guide object building (similar to the mint NFT example)
+  export const passwordTemplate = `Respond with a JSON markdown block containing only the extracted values. Use null for any values that cannot be determined.
+  Example response:
+  \`\`\`json
+  {
+    "encryptionPassword": "<your password here>"
+  }
+  \`\`\`
+  
+  {{recentMessages}}
+
+  Respond with a JSON markdown block containing only the extracted values.`;
+  
+  /**
+   * Builds and validates a password object using the provided runtime, message, and state.
+   * This function mimics the object building approach used in the mint NFT action.
+   */
+  export async function buildCreateWalletDetails(
+    runtime: IAgentRuntime,
+    message: Memory,
+    state: State
+  ): Promise<CreateWalletContent> {
+    // Compose the current state (or create one based on the message)
+    const currentState = state || (await runtime.composeState(message));
+  
+    // Compose a context to drive the object geSneration.
+    const context = composeContext({
+      state: currentState,
+      template: passwordTemplate,
+    });
+  
+    // Generate an object using the defined schema.
+    const result = await generateObject({
+      runtime,
+      context,
+      schema: passwordSchema,
+      modelClass: ModelClass.SMALL,
+    });
+  
+    let passwordData = result.object;
+    if (!passwordData) {
+      // If the generated object is undefined, cast the result to ensure password extraction.
+      passwordData = result as unknown as { password: string };
+    }
+
+    let createWalletContent: CreateWalletContent = passwordData as CreateWalletContent;
+
+    if (createWalletContent === undefined) {
+        createWalletContent = passwordData as unknown as CreateWalletContent;
+    }
+
+    return createWalletContent;
+  }
+
 
 export default {
     name: "CREATE_TON_WALLET",
-    similes: ["NEW_TON_WALLET", "CREATE_WALLET"],
+    similes: ["NEW_TON_WALLET", "MAKE_NEW_TON_WALLET"],
     description:
         "Creates a new TON wallet on demand. Returns the public address and mnemonic backup (store it securely). The wallet keypair is also encrypted to a file using the provided password.",
     handler: async (
@@ -21,15 +94,22 @@ export default {
     ) => {
         elizaLogger.log("Starting CREATE_TON_WALLET action...");
 
-        try {
-            // Get the export password from settings.
-            const password = runtime.getSetting("TON_WALLET_EXPORT_PASSWORD");
-            if (!password) {
-                throw new Error("Missing TON_WALLET_EXPORT_PASSWORD in settings.");
+        // Build password details using the object building approach like in the mint NFT action.
+        const createWalletContent = await buildCreateWalletDetails(runtime, message, state);
+        
+        elizaLogger.debug("createWalletContent", createWalletContent);
+        if(!isCreateWalletContent(createWalletContent)) {
+            if(callback) {
+                callback({
+                    text: "Unable to process create wallet request. No password provided.",
+                    content: { error: "Invalid create wallet. No password provided." },
+                });
             }
-
-            // Generate a new wallet for on-demand creation using the provided password.
-            const { walletProvider, mnemonic } = await WalletProvider.generateNew(runtime, password);
+            return false;
+        }
+        try {
+            // Generate a new wallet using the provided password.
+            const { walletProvider, mnemonic } = await WalletProvider.generateNew(runtime, createWalletContent.encryptionPassword);
             const walletAddress = walletProvider.getAddress();
             const result = {
                 status: "success",
@@ -40,7 +120,13 @@ export default {
 
             if (callback) {
                 callback({
-                    text: JSON.stringify(result, null, 2),
+                    text: `
+New TON wallet created!
+Your password was used to encrypt the wallet keypair, but never stored.
+Wallet Address: ${walletAddress}
+I've used both your password and the mnemonic to create the wallet.
+Please securely store your mnemonic:
+${mnemonic.join(" ")}`,
                     content: result,
                 });
             }
@@ -70,9 +156,25 @@ export default {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "New TON wallet created. Wallet Address: EQAXxxxxxxxxxxxxxxxxxxxxxx. Please securely store your mnemonic.",
+                    text: "New TON wallet created!/n Your password was used to encrypt the wallet keypair, but never stored./nWallet Address: EQAXxxxxxxxxxxxxxxxxxxxxxx./n I've used both your password and the mnemonic to create the wallet./nPlease securely store your mnemonic",
                 },
             },
+            
         ],
+        [
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "Please make me a new TON wallet.",
+                    action: "CREATE_TON_WALLET",
+                },
+            },
+            {
+                user: "{{user1}}",
+                content: {
+                    text: "New TON wallet created!/n Your password was used to encrypt the wallet keypair, but never stored./nWallet Address: EQAXxxxxxxxxxxxxxxxxxxxxxx./n I've used both your password and the mnemonic to create the wallet./nPlease securely store your mnemonic",
+                },
+            },
+        ]
     ],
 }; 

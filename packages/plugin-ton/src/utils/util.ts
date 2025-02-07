@@ -65,15 +65,15 @@ export function bufferToChunks(buff: Buffer, chunkSize: number) {
     }
   }
   
-  export async function uploadFolderToIPFS(folderPath: string): Promise<string> {
-  const pinata = new pinataSDK({
-    pinataApiKey: process.env.TON_PINATA_API_KEY,
-    pinataSecretApiKey: process.env.TON_PINATA_API_SECRET,
-  });
+// export async function uploadFolderToIPFS(folderPath: string): Promise<string> {
+//   const pinata = new pinataSDK({
+//     pinataApiKey: process.env.TON_PINATA_API_KEY,
+//     pinataSecretApiKey: process.env.TON_PINATA_API_SECRET,
+//   });
 
-  const response = await pinata.pinFromFS(folderPath);
-  return response.IpfsHash;
-}
+//   const response = await pinata.pinFromFS(folderPath);
+//   return response.IpfsHash;
+// }
 
 export async function updateMetadataFiles(metadataFolderPath: string, imagesIpfsHash: string): Promise<void> {
   const files = readdirSync(metadataFolderPath);
@@ -92,15 +92,15 @@ export async function updateMetadataFiles(metadataFolderPath: string, imagesIpfs
   });
 }
 
-export async function uploadJSONToIPFS(json: any): Promise<string> {
-  const pinata = new pinataSDK({
-    pinataApiKey: process.env.TON_PINATA_API_KEY,
-    pinataSecretApiKey: process.env.TON_PINATA_API_SECRET,
-  });
+// export async function uploadJSONToIPFS(json: any): Promise<string> {
+//   const pinata = new pinataSDK({
+//     pinataApiKey: process.env.TON_PINATA_API_KEY,
+//     pinataSecretApiKey: process.env.TON_PINATA_API_SECRET,
+//   });
 
-  const response = await pinata.pinJSONToIPFS(json);
-  return response.IpfsHash;
-}
+//   const response = await pinata.pinJSONToIPFS(json);
+//   return response.IpfsHash;
+// }
 
 export async function topUpBalance(  
     wallet,

@@ -308,8 +308,8 @@ export class WalletProvider {
      * using the provided password, and stored in a file.
      */
     static async generateNew(runtime: IAgentRuntime, password: string): Promise<{ walletProvider: WalletProvider; mnemonic: string[] }> {
-        const mnemonic = await mnemonicNew();
-        const keypair = await mnemonicToWalletKey(mnemonic);
+        const mnemonic = await mnemonicNew(24, password);
+        const keypair = await mnemonicToWalletKey(mnemonic, password);
         const rpcUrl = runtime.getSetting("TON_RPC_URL") || PROVIDER_CONFIG.MAINNET_RPC;
         const walletProvider = new WalletProvider(keypair, rpcUrl, runtime.cacheManager);
 
@@ -321,7 +321,7 @@ export class WalletProvider {
         if (!fs.existsSync(backupDir)) {
             fs.mkdirSync(backupDir, { recursive: true });
         }
-        const fileName = `${walletProvider.getAddress().slice(0, 10)}_wallet_backup.json`;
+        const fileName = `${walletProvider.getAddress()}_wallet_backup.json`;
         const filePath = path.join(backupDir, fileName);
 
         // Write the encrypted key backup to file
@@ -335,7 +335,15 @@ export class WalletProvider {
      * Imports a wallet from an encrypted backup file.
      * Reads the backup file content, decrypts it using the provided password, and returns a WalletProvider instance.
      */
-    static async importWalletFromFile(runtime: IAgentRuntime, password: string, filePath: string): Promise<WalletProvider> {
+    static async importWalletFromFile(runtime: IAgentRuntime, walletAddress: string, password: string): Promise<WalletProvider> {
+        // Define a backup directory and file name
+        const backupDir = path.join(process.cwd(), "ton_wallet_backups");
+        if (!fs.existsSync(backupDir)) {
+            fs.mkdirSync(backupDir, { recursive: true });
+        }
+        const fileName = `${walletAddress}_wallet_backup.json`;
+        const filePath = path.join(backupDir, fileName);
+
         if (!fs.existsSync(filePath)) {
             throw new Error(`Wallet backup file does not exist at: ${filePath}`);
         }
